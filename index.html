@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EthioModerne Chat</title>
+    <style>
+        /* CSS ለስታይል */
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f4f7f6; overflow: hidden; }
+        
+        /* አኒሜሽን - እንኳን ደህና መጣሽ */
+        .welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeOut 4s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+        .welcome-text { font-size: 3rem; color: #ff4757; }
+
+        /* የጎን ሜኑ */
+        .sidebar { width: 200px; background: #2c3e50; color: white; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar button { background: none; border: none; color: white; padding: 15px; cursor: pointer; text-align: left; font-size: 1rem; border-radius: 5px; }
+        .sidebar button:hover { background: #34495e; }
+
+        /* ዋና ይዘት */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page { display: none; }
+        #chat-window { height: 350px; border: 1px solid #ddd; background: white; padding: 10px; overflow-y: auto; margin-bottom: 10px; border-radius: 5px; }
+        
+        /* Status */
+        .status-dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <div class="welcome-overlay"><h1 class="welcome-text">እንኳን ደህና መጣሽ ሰብለ! ❤️</h1></div>
+
+    <nav class="sidebar">
+        <button onclick="showPage('home')">🏠 Home</button>
+        <button onclick="showPage('message')">💬 Message</button>
+        <button onclick="showPage('add-friend')">➕ Add Friend</button>
+        <button onclick="showPage('notification')">🔔 Notification</button>
+        <button onclick="showPage('profile')">👤 Profile</button>
+        <button onclick="showPage('setting')">⚙️ Setting</button>
+    </nav>
+
+    <main class="main-content">
+        <div id="home" class="page" style="display:block;"><h2>Home</h2><p>እንኳን ደህና መጣሽ! Status: <span class="status-dot"></span> Online</p></div>
+        
+        <div id="message" class="page">
+            <h2>Chat</h2>
+            <div id="typing-status" style="font-size: 0.8rem; color: gray; height: 20px;"></div>
+            <div id="chat-window"></div>
+            <input type="text" id="msgInput" placeholder="መልእክት ጻፍ..." style="width: 70%; padding: 10px;" onkeypress="updateTypingStatus()">
+            <button onclick="sendMessage()" style="padding: 10px;">ላክ</button>
+        </div>
+
+        <div id="add-friend" class="page"><h2>Add Friend</h2><input type="text" placeholder="የጓደኛ ስም..."> <button>Add</button></div>
+        <div id="notification" class="page"><h2>Notification</h2><p>ምንም አዲስ መረጃ የለም</p></div>
+        <div id="profile" class="page"><h2>Profile</h2><p>የተጠቃሚ መረጃ እዚህ ይኖራል</p></div>
+        <div id="setting" class="page"><h2>Setting</h2><p>Settings...</p></div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 1. Firebase Configuration (እባክህ ከFirebase Console ያገኘኸውን መረጃ እዚህ አስገባ)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0fmrZeve8D4C8h6nHOU8v7tO1SYGqpTw",
+            authDomain: "student-regeneration-system.firebaseapp.com",
+            projectId: "student-regeneration-system",
+            storageBucket: "student-regeneration-system.firebasestorage.app",
+            messagingSenderId: "309660267926",
+            appId: "1:309660267926:web:4c18ded426dd78bd2359b7"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+
+        // 2. የገጽ መቀያየሪያ ተግባር
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+        }
+
+        // 3. መልእክት መላኪያ
+        function sendMessage() {
+            const input = document.getElementById("msgInput");
+            if (input.value.trim() !== "") {
+                db.collection("chats").doc("chat1").collection("messages").add({
+                    text: input.value,
+                    sender: "ሰብለ",
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                input.value = "";
+            }
+        }
+
+        // 4. መልእክት መቀበያ (Real-time)
+        db.collection("chats").doc("chat1").collection("messages").orderBy("timestamp")
+            .onSnapshot(snapshot => {
+                const chatWindow = document.getElementById("chat-window");
+                chatWindow.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    chatWindow.innerHTML += `<p><b>${data.sender}:</b> ${data.text}</p>`;
+                });
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            });
+
+        // 5. Typing Status Logic
+        function updateTypingStatus() {
+            db.collection("chats").doc("chat1").update({ typingUser: "ሰብለ" });
+            setTimeout(() => db.collection("chats").doc("chat1").update({ typingUser: "" }), 3000);
+        }
+
+        db.collection("chats").doc("chat1").onSnapshot(doc => {
+            const data = doc.data();
+            document.getElementById("typing-status").innerText = data?.typingUser ? `${data.typingUser} እየጻፈች ነው...` : "";
+        });
+    </script>
+</body>
+</html>
